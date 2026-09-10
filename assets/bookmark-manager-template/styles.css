@@ -20,8 +20,7 @@
   --radius-md: 14px;
   --radius-pill: 999px;
   --font-ui: "IBM Plex Sans", "Microsoft YaHei", sans-serif;
-  --font-display: -apple-system, ui-sans-serif, -apple-system, "system-ui", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, "sans-serif", "Segoe UI Emoji", "Segoe UI Symbol"
-;
+  --font-display: "Fraunces", "Songti SC", serif;
   --font-mono: "JetBrains Mono", "SF Mono", monospace;
 }
 
@@ -787,14 +786,14 @@ h2 {
 
 h1 {
   max-width: 760px;
-  font-size: clamp(32px, 3.2vw, 48px);
+  font-size: clamp(32px, 3.5vw, 48px);
   font-weight: 500;
   line-height: 1.05;
   overflow-wrap: anywhere;
 }
 
 h2 {
-  font-size: clamp(24px, 2.4vw, 34px);
+  font-size: clamp(24px, 2.8vw, 34px);
   font-weight: 500;
   line-height: 1.12;
 }
