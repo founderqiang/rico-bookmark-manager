@@ -3,6 +3,17 @@ const rawPayload = window.RICO_BOOKMARKS_DATA || {
   reports: {}
 };
 
+const STORAGE_VERSION = "ricoBookmarkManager:v2";
+const LEGACY_STORAGE_KEYS = {
+  added: "ricoAddedBookmarks",
+  staged: "ricoBookmarkStage",
+  sidebarCollapsed: "ricoSidebarCollapsed",
+  expandedCategories: "ricoCategoryExpanded"
+};
+const TRACKING_PARAMS = new Set(["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "utm_id", "fbclid", "gclid", "yclid", "mc_cid", "mc_eid", "igshid", "spm"]);
+const STORAGE_SCOPE = storageScope();
+let toastTimer = 0;
+
 const state = {
   query: "",
   category: "all",
@@ -12,8 +23,10 @@ const state = {
   status: "all",
   view: "grid",
   insightPanel: "summary",
-  staged: JSON.parse(localStorage.getItem("ricoBookmarkStage") || "{}"),
-  sidebarCollapsed: localStorage.getItem("ricoSidebarCollapsed") === "true",
+  staged: loadStorageObject("staged"),
+  added: loadAddedBookmarks(),
+  sidebarCollapsed: loadStorageValue("sidebarCollapsed") === "true",
+  tagsExpanded: loadStorageValue("tagsExpanded") === "true",
   expandedCategories: loadExpandedCategories()
 };
 
@@ -24,6 +37,7 @@ const TAG_PLACEHOLDERS = new Set(["未分类", "其他", "Uncategorized", "Other
 document.addEventListener("DOMContentLoaded", init);
 
 function init() {
+  reconcileLocalAdded();
   applyThemeMeta();
   applySidebarState();
   bindEvents();
@@ -31,6 +45,7 @@ function init() {
   renderAll();
   refreshIcons();
   requestAnimationFrame(() => document.querySelector(".site-shell")?.classList.add("sidebar-ready"));
+  requestAnimationFrame(offerLegacyMigration);
 }
 
 function bindEvents() {
@@ -41,11 +56,26 @@ function bindEvents() {
 
   $("sidebarToggle").addEventListener("click", () => {
     state.sidebarCollapsed = !state.sidebarCollapsed;
-    localStorage.setItem("ricoSidebarCollapsed", String(state.sidebarCollapsed));
+    saveStorageValue("sidebarCollapsed", String(state.sidebarCollapsed));
     applySidebarState();
   });
 
   $("guideBtn").addEventListener("click", openGuide);
+  $("tagCollapseToggle").addEventListener("click", () => {
+    state.tagsExpanded = !state.tagsExpanded;
+    saveStorageValue("tagsExpanded", String(state.tagsExpanded));
+    applyTagCloudState();
+  });
+  $("submitBookmarkBtn").addEventListener("click", openSubmitBookmark);
+  $("mobileSubmitBookmarkBtn").addEventListener("click", openSubmitBookmark);
+  $("closeSubmitBookmarkBtn").addEventListener("click", closeSubmitBookmark);
+  $("cancelSubmitBookmarkBtn").addEventListener("click", closeSubmitBookmark);
+  $("submitBookmarkForm").addEventListener("submit", submitBookmark);
+  $("submitBookmarkDialog").addEventListener("click", (event) => {
+    if (event.target === $("submitBookmarkDialog")) closeSubmitBookmark();
+  });
+  $("importLegacyMigrationBtn").addEventListener("click", importLegacyMigration);
+  $("skipLegacyMigrationBtn").addEventListener("click", skipLegacyMigration);
 
   $("clearAllBtn").addEventListener("click", clearFilters);
 
@@ -134,6 +164,251 @@ function openGuide() {
   $("guideDialog").showModal();
 }
 
+function storageScope() {
+  try {
+    const page = new URL(window.location.href);
+    const directory = page.pathname.replace(/[^/]*$/, "") || "/";
+    return `${page.protocol}//${page.host}${directory}`;
+  } catch {
+    return window.location.pathname || "default";
+  }
+}
+
+function storageKey(name) {
+  return `${STORAGE_VERSION}:${STORAGE_SCOPE}:${name}`;
+}
+
+function loadStorageValue(name, fallback = "") {
+  try {
+    return localStorage.getItem(storageKey(name)) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveStorageValue(name, value) {
+  localStorage.setItem(storageKey(name), value);
+}
+
+function loadStorageObject(name) {
+  try {
+    const value = JSON.parse(loadStorageValue(name, "{}"));
+    return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveStorageObject(name, value) {
+  saveStorageValue(name, JSON.stringify(value));
+}
+
+function loadLegacyValue(name, fallback = "") {
+  try {
+    return localStorage.getItem(LEGACY_STORAGE_KEYS[name]) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function loadLegacyAdded() {
+  try {
+    const value = JSON.parse(loadLegacyValue("added", "[]"));
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+
+function loadLegacyStaged() {
+  try {
+    const value = JSON.parse(loadLegacyValue("staged", "{}"));
+    return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  } catch {
+    return {};
+  }
+}
+
+function offerLegacyMigration() {
+  if (loadStorageValue("legacyMigration") || state.added.length || Object.keys(state.staged).length) return;
+  const added = loadLegacyAdded();
+  const staged = loadLegacyStaged();
+  const total = added.length + Object.keys(staged).length;
+  if (!total) return;
+  const parts = [];
+  if (added.length) parts.push(`${added.length} 条新增书签`);
+  if (Object.keys(staged).length) parts.push(`${Object.keys(staged).length} 条暂存编辑`);
+  $("legacyMigrationSummary").textContent = `检测到 ${parts.join("，")}。`;
+  $("legacyMigrationDialog").showModal();
+  refreshIcons();
+}
+
+function importLegacyMigration() {
+  state.added = loadLegacyAdded();
+  state.staged = loadLegacyStaged();
+  state.sidebarCollapsed = loadLegacyValue("sidebarCollapsed") === "true";
+  try {
+    const expanded = JSON.parse(loadLegacyValue("expandedCategories", "{}"));
+    state.expandedCategories = expanded && typeof expanded === "object" && !Array.isArray(expanded) ? expanded : {};
+  } catch {
+    state.expandedCategories = {};
+  }
+  reconcileLocalAdded();
+  saveStorageObject("staged", state.staged);
+  saveStorageValue("sidebarCollapsed", String(state.sidebarCollapsed));
+  saveStorageObject("expandedCategories", state.expandedCategories);
+  saveStorageValue("legacyMigration", "imported");
+  Object.values(LEGACY_STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
+  $("legacyMigrationDialog").close();
+  applySidebarState();
+  renderShell();
+  renderAll();
+  showToast("旧版本地数据已导入到当前导航站");
+}
+
+function skipLegacyMigration() {
+  saveStorageValue("legacyMigration", "skipped");
+  $("legacyMigrationDialog").close();
+}
+
+function loadAddedBookmarks() {
+  try {
+    const value = JSON.parse(loadStorageValue("added", "[]"));
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveAddedBookmarks() {
+  saveStorageValue("added", JSON.stringify(state.added));
+}
+
+function canonicalizeUrl(value) {
+  try {
+    const url = new URL(String(value || "").trim());
+    url.protocol = url.protocol.toLowerCase();
+    url.hostname = url.hostname.toLowerCase().replace(/^www\./, "");
+    url.pathname = url.pathname.replace(/\/+$/, "") || "/";
+    const entries = [...url.searchParams.entries()].filter(([key]) => {
+      const normalized = key.toLowerCase();
+      return !normalized.startsWith("utm_") && !TRACKING_PARAMS.has(normalized);
+    });
+    url.search = new URLSearchParams(entries).toString();
+    url.hash = "";
+    return url.href;
+  } catch {
+    return String(value || "").trim();
+  }
+}
+
+function bookmarkKey(bookmark) {
+  return canonicalizeUrl(bookmark?.canonical_url || bookmark?.url);
+}
+
+function reconcileLocalAdded() {
+  const baseKeys = new Set((rawPayload.bookmarks || []).map(bookmarkKey).filter(Boolean));
+  const seen = new Set();
+  const next = state.added.filter((bookmark) => {
+    const key = bookmarkKey(bookmark);
+    if (!key || baseKeys.has(key) || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  if (next.length !== state.added.length) {
+    state.added = next;
+    try {
+      saveAddedBookmarks();
+    } catch {
+      // The generated data remains authoritative even if browser storage is unavailable.
+    }
+  }
+}
+
+function showToast(message, actionLabel = "", action = null) {
+  window.clearTimeout(toastTimer);
+  const region = $("toastRegion");
+  region.innerHTML = `<div class="toast"><span>${escapeHtml(message)}</span>${actionLabel ? `<button type="button">${escapeHtml(actionLabel)}</button>` : ""}</div>`;
+  const button = region.querySelector("button");
+  if (button) {
+    button.addEventListener("click", () => {
+      window.clearTimeout(toastTimer);
+      region.innerHTML = "";
+      action?.();
+    });
+  }
+  toastTimer = window.setTimeout(() => { region.innerHTML = ""; }, actionLabel ? 6000 : 3600);
+}
+
+function openSubmitBookmark() {
+  const categories = unique(bookmarks().map(firstPath).filter(Boolean));
+  $("submitCategoryOptions").innerHTML = categories.map((name) => `<option value="${escapeAttr(name)}"></option>`).join("");
+  $("submitBookmarkStatus").textContent = "";
+  $("submitBookmarkDialog").showModal();
+  refreshIcons();
+  requestAnimationFrame(() => $("submitUrlInput").focus());
+}
+
+function closeSubmitBookmark() {
+  $("submitBookmarkDialog").close();
+  $("submitBookmarkForm").reset();
+  $("submitBookmarkStatus").textContent = "";
+}
+
+function submitBookmark(event) {
+  event.preventDefault();
+  const status = $("submitBookmarkStatus");
+  let parsedUrl;
+  try {
+    parsedUrl = new URL($("submitUrlInput").value.trim());
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) throw new Error();
+  } catch {
+    status.textContent = "请输入以 http:// 或 https:// 开头的有效网址。";
+    $("submitUrlInput").focus();
+    return;
+  }
+
+  const canonicalUrl = canonicalizeUrl(parsedUrl.href);
+  const duplicate = bookmarks().find((bookmark) => bookmarkKey(bookmark) === canonicalUrl);
+  if (duplicate) {
+    status.textContent = `这个网址已经存在：${duplicate.cleanTitle || duplicate.title}`;
+    return;
+  }
+
+  const categoryPath = $("submitCategoryInput").value.split("/").map(cleanLabel).filter(Boolean);
+  const title = cleanLabel($("submitTitleInput").value) || parsedUrl.hostname.replace(/^www\./, "");
+  const record = {
+    id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title,
+    url: parsedUrl.href,
+    canonical_url: canonicalUrl,
+    domain: parsedUrl.hostname.replace(/^www\./, ""),
+    category_path: categoryPath.length ? categoryPath : ["其他"],
+    source_folder_path: ["本地提交"],
+    tags: cleanTags($("submitTagsInput").value, categoryPath),
+    description: cleanLabel($("submitDescriptionInput").value),
+    link_status: "unknown",
+    review_status: "kept",
+    added_locally: true,
+    add_date: String(Math.floor(Date.now() / 1000))
+  };
+
+  try {
+    state.added.unshift(record);
+    saveAddedBookmarks();
+  } catch (error) {
+    state.added.shift();
+    status.textContent = `保存失败：${error.message || "浏览器无法写入本地数据"}`;
+    return;
+  }
+
+  closeSubmitBookmark();
+  clearFilters();
+  renderShell();
+  renderAll();
+  showToast("已添加到导航站");
+}
+
 function applyThemeMeta() {
   const theme = window.RICO_BOOKMARKS_META?.theme || {};
   document.documentElement.dataset.theme = theme.id || "kami";
@@ -212,7 +487,7 @@ function categoryIcon(name) {
 }
 
 function bookmarks() {
-  return (rawPayload.bookmarks || []).map(normalizeBookmark);
+  return [...state.added, ...(rawPayload.bookmarks || [])].map(normalizeBookmark);
 }
 
 function normalizeBookmark(raw) {
@@ -312,8 +587,7 @@ function renderCategoryNav(list) {
     const active = state.category === name && !state.subcategory;
     const children = Object.entries(node.children);
     const hasChildren = children.length > 0;
-    const forceExpanded = state.category === name;
-    const expanded = forceExpanded || state.expandedCategories[name] === true;
+    const expanded = state.expandedCategories[name] === true;
     rows.push(`<div class="cat-group ${expanded ? "expanded" : ""}" data-cat-group="${escapeAttr(name)}">
       <div class="cat-row ${hasChildren ? "" : "no-children"}">
         <button type="button" class="cat-item cat-main ${active ? "active" : ""}" data-category="${escapeAttr(name)}">
@@ -389,6 +663,18 @@ function renderTagCloud(list) {
       renderAll();
     });
   });
+  applyTagCloudState();
+}
+
+function applyTagCloudState() {
+  const toggle = $("tagCollapseToggle");
+  const cloud = $("tagCloud");
+  if (!toggle || !cloud) return;
+  cloud.toggleAttribute("hidden", !state.tagsExpanded);
+  const label = state.tagsExpanded ? "收起常用标签" : "展开常用标签";
+  toggle.setAttribute("aria-expanded", String(state.tagsExpanded));
+  toggle.setAttribute("aria-label", label);
+  toggle.setAttribute("title", label);
 }
 
 function tagCounts(list, limit = 28) {
@@ -687,6 +973,7 @@ function showDetail(id) {
   const tagHtml = bookmark.tags.length ? bookmark.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("") : `<span class="muted">无标签</span>`;
   const displayTitle = bookmark.cleanTitle || bookmark.title;
   const hasStage = Boolean(state.staged[id]);
+  const isLocalAddition = state.added.some((item) => String(item.id) === id);
   $("detailContent").innerHTML = `<div class="modal-title-row">
       <p class="eyebrow">${escapeHtml(bookmark.domain || "书签")}</p>
       <h2>${escapeHtml(displayTitle)}</h2>
@@ -714,7 +1001,8 @@ function showDetail(id) {
     </details>
     <div class="detail-actions">
       <a class="primary-link" href="${escapeAttr(bookmark.url)}" target="_blank" rel="noopener">${icon("external-link")}访问网站</a>
-    </div>`;
+    </div>
+    ${isLocalAddition ? `<div class="local-bookmark-actions"><button class="quiet-btn danger-quiet" type="button" id="deleteLocalBookmarkBtn">${icon("trash-2")}删除本地书签</button></div>` : ""}`;
   $("detailDialog").showModal();
   refreshIcons();
   $("saveStageBtn").addEventListener("click", () => {
@@ -727,7 +1015,7 @@ function showDetail(id) {
         tags,
         description
       };
-      localStorage.setItem("ricoBookmarkStage", JSON.stringify(state.staged));
+      saveStorageObject("staged", state.staged);
       $("detailDialog").close();
       renderShell();
       renderAll();
@@ -737,10 +1025,44 @@ function showDetail(id) {
   });
   $("resetStageBtn").addEventListener("click", () => {
     delete state.staged[id];
-    localStorage.setItem("ricoBookmarkStage", JSON.stringify(state.staged));
+    saveStorageObject("staged", state.staged);
     $("detailDialog").close();
     renderShell();
     renderAll();
+  });
+  $("deleteLocalBookmarkBtn")?.addEventListener("click", () => deleteLocalBookmark(id));
+}
+
+function deleteLocalBookmark(id) {
+  const index = state.added.findIndex((bookmark) => String(bookmark.id) === id);
+  if (index < 0) return;
+  const [removed] = state.added.splice(index, 1);
+  const staged = state.staged[id];
+  delete state.staged[id];
+  try {
+    saveAddedBookmarks();
+    saveStorageObject("staged", state.staged);
+  } catch (error) {
+    state.added.splice(index, 0, removed);
+    if (staged) state.staged[id] = staged;
+    showToast(`删除失败：${error.message || "浏览器无法写入本地数据"}`);
+    return;
+  }
+  $("detailDialog").close();
+  renderShell();
+  renderAll();
+  showToast("已删除本地书签", "撤销", () => {
+    state.added.splice(Math.min(index, state.added.length), 0, removed);
+    if (staged) state.staged[id] = staged;
+    try {
+      saveAddedBookmarks();
+      saveStorageObject("staged", state.staged);
+      renderShell();
+      renderAll();
+      showToast("已恢复本地书签");
+    } catch (error) {
+      showToast(`恢复失败：${error.message || "浏览器无法写入本地数据"}`);
+    }
   });
 }
 
@@ -909,23 +1231,18 @@ function clearFilters() {
 }
 
 function loadExpandedCategories() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem("ricoCategoryExpanded") || "{}");
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
+  return loadStorageObject("expandedCategories");
 }
 
 function saveExpandedCategories() {
-  localStorage.setItem("ricoCategoryExpanded", JSON.stringify(state.expandedCategories));
+  saveStorageObject("expandedCategories", state.expandedCategories);
 }
 
 function exportData() {
   return {
     ...rawPayload,
     bookmarks: bookmarks().map((bookmark) => {
-      const { categoryPath, sourcePath, status, httpStatus, duplicateGroup, reviewStatus, addDate, cleanTitle, ...rest } = bookmark;
+      const { categoryPath, sourcePath, status, httpStatus, duplicateGroup, reviewStatus, addDate, cleanTitle, added_locally, ...rest } = bookmark;
       return {
         ...rest,
         clean_title: cleanTitle || "",

@@ -32,6 +32,45 @@
   display: none !important;
 }
 
+.toast-region {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 100;
+  max-width: min(360px, calc(100vw - 32px));
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 12px 11px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border));
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.toast span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.toast button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+  cursor: pointer;
+  padding: 5px 9px;
+  font: inherit;
+  font-weight: 600;
+}
+
 /* ---- Icon system (lucide) ---- */
 .icon,
 [data-lucide] {
@@ -733,6 +772,67 @@ a:focus-visible {
   color: var(--text);
 }
 
+.side-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.side-label-row .side-label {
+  margin-bottom: 9px;
+}
+
+.tag-collapse-toggle {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  margin: -3px 0 6px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.tag-collapse-toggle:hover {
+  border-color: var(--border);
+  background: var(--panel-raised);
+  color: var(--accent);
+}
+
+.tag-collapse-toggle .icon {
+  width: 15px;
+  height: 15px;
+  transition: transform 0.18s var(--sidebar-ease);
+}
+
+.tag-collapse-toggle[aria-expanded="true"] .icon {
+  transform: rotate(180deg);
+}
+
+.submit-bookmark-btn {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--inverse);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.submit-bookmark-btn:hover {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  transform: translateY(-1px);
+}
+
 .export-menu {
   position: absolute;
   left: 0;
@@ -1374,6 +1474,103 @@ h3 {
   box-shadow: var(--shadow);
 }
 
+.submit-bookmark-dialog {
+  width: min(680px, calc(100vw - 32px));
+}
+
+.legacy-migration-dialog {
+  width: min(530px, calc(100vw - 32px));
+}
+
+.legacy-migration-intro,
+.legacy-migration-note {
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+.legacy-migration-note {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.legacy-migration-actions,
+.local-bookmark-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.legacy-migration-actions button {
+  border: 0;
+  cursor: pointer;
+}
+
+.submit-bookmark-intro,
+.submit-bookmark-note {
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+.submit-bookmark-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.submit-bookmark-fields label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.submit-bookmark-fields .field-wide {
+  grid-column: 1 / -1;
+}
+
+.submit-bookmark-fields textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 104px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+
+.submit-bookmark-fields textarea:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.submit-bookmark-note {
+  font-size: 12px;
+}
+
+.form-status {
+  min-height: 20px;
+  margin-top: 8px;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.submit-bookmark-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.submit-bookmark-actions button {
+  border: 0;
+  cursor: pointer;
+}
+
 .modal-close {
   position: absolute;
   top: 14px;
@@ -1508,6 +1705,46 @@ h3 {
   display: flex;
   justify-content: flex-end;
   margin-top: 20px;
+}
+
+.guide-content p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.project-guide a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.project-guide a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.project-guide a .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.local-bookmark-actions {
+  justify-content: flex-start;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.local-bookmark-actions .quiet-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .insight-card {
@@ -1921,7 +2158,7 @@ html[data-theme="kami"] .eyebrow::before {
   .mobile-tools {
     max-width: 1320px;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 8px;
     margin: 0 auto 12px;
   }
@@ -1998,6 +2235,25 @@ html[data-theme="kami"] .eyebrow::before {
 }
 
 @media (max-width: 520px) {
+  .toast-region {
+    right: 16px;
+    bottom: 16px;
+  }
+
+  .legacy-migration-actions,
+  .submit-bookmark-actions {
+    flex-direction: column-reverse;
+  }
+
+  .legacy-migration-actions button,
+  .submit-bookmark-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .submit-bookmark-fields {
+    grid-template-columns: 1fr;
+  }
   .bookmark-grid {
     grid-template-columns: 1fr;
   }

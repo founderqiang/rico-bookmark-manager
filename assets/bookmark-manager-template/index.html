@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="theme.css">
 </head>
 <body>
+  <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
   <div class="site-shell">
     <aside class="site-sidebar" aria-label="书签导航">
       <div class="sidebar-head">
@@ -40,8 +41,13 @@
         <nav class="category-nav" id="categoryNav"></nav>
       </section>
 
-      <section class="side-block">
-        <div class="side-label"><i data-lucide="hash" class="icon"></i>常用标签</div>
+      <section class="side-block tag-block">
+        <div class="side-label-row">
+          <div class="side-label"><i data-lucide="hash" class="icon"></i>常用标签</div>
+          <button class="tag-collapse-toggle" type="button" id="tagCollapseToggle" aria-label="展开常用标签" aria-expanded="false" title="展开常用标签">
+            <i data-lucide="chevron-down" class="icon"></i>
+          </button>
+        </div>
         <div class="tag-cloud" id="tagCloud"></div>
       </section>
 
@@ -57,6 +63,7 @@
       </section>
 
       <div class="side-actions">
+        <button class="submit-bookmark-btn" type="button" id="submitBookmarkBtn"><i data-lucide="plus" class="icon"></i>提交书签</button>
         <button class="quiet-btn" type="button" id="insightsBtn"><i data-lucide="bar-chart-3" class="icon"></i>报告</button>
         <button class="quiet-btn" type="button" id="exportMenuBtn" aria-expanded="false"><i data-lucide="download" class="icon"></i>导出</button>
         <div class="export-menu" id="exportMenu" hidden>
@@ -91,6 +98,7 @@
       </header>
 
       <section class="mobile-tools" id="mobileTools" aria-label="移动端工具">
+        <button type="button" id="mobileSubmitBookmarkBtn"><i data-lucide="plus" class="icon"></i>提交</button>
         <button type="button" id="mobileFilterBtn"><i data-lucide="sliders-horizontal" class="icon"></i>筛选</button>
         <button type="button" id="mobileInsightsBtn"><i data-lucide="bar-chart-3" class="icon"></i>报告</button>
         <button type="button" id="mobileExportBtn"><i data-lucide="download" class="icon"></i>导出</button>
@@ -136,6 +144,46 @@
       <button class="modal-close" value="cancel" aria-label="关闭"><i data-lucide="x" class="icon"></i></button>
       <div id="detailContent"></div>
     </form>
+  </dialog>
+
+  <dialog id="submitBookmarkDialog" class="modal-dialog submit-bookmark-dialog">
+    <form class="modal-card submit-bookmark-card" id="submitBookmarkForm">
+      <button class="modal-close" type="button" id="closeSubmitBookmarkBtn" aria-label="关闭"><i data-lucide="x" class="icon"></i></button>
+      <div class="modal-title-row">
+        <p class="eyebrow">新增</p>
+        <h2>提交一个书签</h2>
+        <p class="submit-bookmark-intro">保存后会立即加入本站，并包含在“调整后的 JSON”导出数据中。</p>
+      </div>
+      <div class="submit-bookmark-fields">
+        <label class="field-wide">网址 *<input id="submitUrlInput" name="url" type="url" inputmode="url" autocomplete="url" placeholder="https://example.com" required></label>
+        <label class="field-wide">标题<input id="submitTitleInput" name="title" autocomplete="off" placeholder="留空时使用网站域名"></label>
+        <label>分类<input id="submitCategoryInput" name="category" list="submitCategoryOptions" placeholder="例如：设计 / 灵感"></label>
+        <label>标签<input id="submitTagsInput" name="tags" placeholder="用逗号分隔"></label>
+        <label class="field-wide">描述<textarea id="submitDescriptionInput" name="description" rows="4" placeholder="简要说明这个网站的用途或收藏原因"></textarea></label>
+      </div>
+      <datalist id="submitCategoryOptions"></datalist>
+      <p class="submit-bookmark-note">数据保存在当前浏览器中，不会直接修改服务器上的 data.js。</p>
+      <p class="form-status" id="submitBookmarkStatus" role="alert" aria-live="polite"></p>
+      <div class="submit-bookmark-actions">
+        <button class="quiet-btn" type="button" id="cancelSubmitBookmarkBtn">取消</button>
+        <button class="primary-link" type="submit"><i data-lucide="plus" class="icon"></i>添加到导航站</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="legacyMigrationDialog" class="modal-dialog legacy-migration-dialog">
+    <div class="modal-card legacy-migration-card">
+      <div class="modal-title-row">
+        <p class="eyebrow">本地数据</p>
+        <h2>发现旧版暂存数据</h2>
+        <p class="legacy-migration-intro" id="legacyMigrationSummary"></p>
+      </div>
+      <p class="legacy-migration-note">旧版本的本地数据没有区分导航站。导入后，它会只属于当前这个导航站。</p>
+      <div class="legacy-migration-actions">
+        <button class="quiet-btn" type="button" id="skipLegacyMigrationBtn">跳过此站</button>
+        <button class="primary-link" type="button" id="importLegacyMigrationBtn"><i data-lucide="inbox" class="icon"></i>导入到当前站点</button>
+      </div>
+    </div>
   </dialog>
 
   <dialog id="insightDialog" class="modal-dialog">
@@ -194,6 +242,11 @@
             <li>它们不会直接修改源 <code>bookmarks.json</code> 或浏览器书签。</li>
             <li>要保留编辑，请导出 JSON 并主动替换源数据。</li>
           </ul>
+        </article>
+        <article class="project-guide">
+          <h3>Rico Bookmark Manager</h3>
+          <p>一个开源的浏览器书签整理工具，可将书签解析为结构化数据并生成可搜索的导航站。</p>
+          <a href="https://github.com/ricocc/rico-bookmark-manager" target="_blank" rel="noopener"><i data-lucide="github" class="icon"></i>GitHub 开源仓库</a>
         </article>
       </div>
     </form>
