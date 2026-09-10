@@ -6,7 +6,7 @@
   "density": "comfortable",
   "fonts": {
     "ui": "\"IBM Plex Sans\", \"Microsoft YaHei\", sans-serif",
-    "display": "\"Fraunces\", \"Songti SC\", serif",
+    "display": "-apple-system, ui-sans-serif, -apple-system, \"system-ui\", \"Segoe UI\", Helvetica, \"Apple Color Emoji\", Arial, \"sans-serif\", \"Segoe UI Emoji\", \"Segoe UI Symbol\"",
     "mono": "\"JetBrains Mono\", \"SF Mono\", monospace"
   },
   "radii": {

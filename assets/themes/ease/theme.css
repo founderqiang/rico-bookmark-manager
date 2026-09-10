@@ -21,7 +21,7 @@
   --radius-md: 14px;
   --radius-pill: 999px;
   --font-ui: "IBM Plex Sans", "Microsoft YaHei", sans-serif;
-  --font-display: "Fraunces", "Songti SC", serif;
+  --font-display: -apple-system, ui-sans-serif, -apple-system, "system-ui", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, "sans-serif", "Segoe UI Emoji", "Segoe UI Symbol";
   --font-mono: "JetBrains Mono", "SF Mono", monospace;
 }
 html { background: var(--bg); }
